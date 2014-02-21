@@ -1,21 +1,51 @@
 /*
  * mathparse.c
  *
- * Parsing equation of the form: (x/y)/((z/c)/n)
+ * Parsing an equation int the INFIX Form to a rpn expression.  
+ * Bsp.: (100/2)/((16/2/4) -> 100 2 / 5 2 / 8 /
+ * 
+ * The algorithm works by using two stacks, a numstack and an operator stack.
  * 
  */
 #include<stdio.h>
+#include<stdlib.h>
 #include<assert.h>
 #include<errno.h>
 #include<ctype.h>
 #include<stdbool.h>
 
-#define MAX_EQU_LENGTH 255
+// Defines
+//#define EXIT_FAILURE    1
+//#define EXIT_SUCCESS    0
+#define MAX_EQU_LENGTH  255
+#define MAX_NUMSTACK    64
+#define MAX_OPSTACK     64
 
+// --------------- Prototypes
 void die(const char *message);
-int from_ascii_to_number(char c);
-int filter_numbers_from_equation(char *equation, int start_value, int number_of_digits);
-int parse_equation(char *equation);
+void push_numstack(long num);
+void push_opstack();
+void pop_opstack();
+int pop_numstack();
+int parse_numbers(char *equation);
+
+// --------------- Global Declarations
+typedef struct{
+    char op;
+    int prec;
+    int assoc;
+}operator;
+
+// creating a global Numstack by defining an array of numbers.
+long numstack[MAX_NUMSTACK];
+long nnumstack = 0;
+
+// creating a global Opstack by defining an array of operator structs.
+operator opstack[MAX_OPSTACK];
+int nopstack = 0;
+
+
+// --------------- Functions
 
 void die(const char *message)
 {
@@ -25,46 +55,49 @@ void die(const char *message)
         printf("ERROR: %s\n", message);
     }
 
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
-int from_ascii_to_number(char c)
+void push_numstack(long num)
 {
-    return (float)(c - '0');
+    if(nnumstack > MAX_NUMSTACK - 1){
+        die ("Number stack overflow!\n");
+    }
+
+    numstack[nnumstack++] = num;
 }
 
-int filter_numbers_from_equation(char *equation, int start_value, int number_of_digits)
+int pop_numstack()
 {
-    unsigned int i = 0;
-    char buf[MAX_EQU_LENGTH];
-    char *pbuf = buf;
-    
-    for(i = start_value; i <= (number_of_digits + start_value - 1); i++)
-        buf[i - start_value] = *(equation + i);
-    
-    buf[start_value + number_of_digits - 1] = '\0';
-    
-    return atoi(buf);
+    if(!nnumstack){
+        die("Number stack empty!\n");
+    }
+
+    return numstack[--nnumstack];
 }
 
-int get_numbers(char *equation)
+void push_opstack()
+{
+}
+
+void pop_opstack()
+{
+}
+
+int parse_numbers(char *equation)
 {
     char *str = strdup(equation), *p = str;
     
     while(*p){ // While there are more characters to process.
         if(isdigit(*p)){
             long number = strtol(p, &p, 10);
-            printf("%ld\n", number);
+            printf("DEBUG: Pushing number: %ld to numstack.\n", number);
+            push_numstack(number);
         } else {
             p++;
         }
     }
 
-    return 0;
-}
-    
-int parse_equation(char *equation)
-{
     return 0;
 }
 
@@ -75,9 +108,9 @@ int main(int argc, char *argv[])
 
     char *equation = argv[1];
     
-    get_numbers(equation);
+    parse_numbers(equation);
 
     //printf("\nSUCCESS: %s = %f\n", equation, parse_equation(equation));
 
-    return 1; 
+    return EXIT_SUCCESS; 
 }
