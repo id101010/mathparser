@@ -20,6 +20,7 @@
 #define MAX_EQU_LENGTH  64
 #define MAX_NUMSTACK    64
 #define MAX_OPSTACK     64
+#define MAX_QUEUE       64
 
 // Define the precedence and associativity of each operator
 #define PREC_POW    4
@@ -41,6 +42,7 @@ void die(const char *message);
 void push_numstack(long num);
 int pop_numstack();
 int parse_numbers(char *equation);
+//TODO: Add finnished functions.
 
 // --------------- Global Declarations
 
@@ -51,13 +53,24 @@ typedef struct{
     char *assoc;
 }operator;
 
+// the output queue
+typedef struct{
+    bool is_number;
+    long number;
+    char operator;
+}queue;
+
 // creating a global Numstack by defining an array of numbers.
 long numstack[MAX_NUMSTACK];
 long nnumstack = 0;
 
-// creating a pointer to an array of operator structs.
+// creating an array of operator structs. -> Op Stack
 operator opstack[MAX_OPSTACK];
 int nopstack = 0;
+
+// creating an array of queue structs. -> Queue
+queue output[MAX_QUEUE];
+int noutput = 0; 
 
 // --------------- Functions
 
@@ -154,6 +167,47 @@ void print_opstack()
     }
 }
 
+// Push a Number to the output queue
+void push_number_to_output(long num)
+{
+    if(noutput > MAX_QUEUE - 1)
+        die("Output stack overflow!\n");
+    
+    output[noutput].is_number = true;
+    output[noutput].number = num;
+    noutput++;
+}
+
+// Push an operator to the output queue
+void push_operator_to_output(char op)
+{
+    if(noutput > MAX_QUEUE - 1)
+        die("Output stack overflow!\n");
+
+    output[noutput].is_number = false;
+    output[noutput].operator = op;
+    noutput++;
+}
+
+// Flush RPN expression!
+void flush_rpn()
+{
+    //TODO Implement!
+    // The following is only for debugging purposes!
+
+    printf("\nDEBUG: Printing output queue!\n");
+    int i = 0;
+    for(i = (noutput - 1); i >= 0; i--){
+        
+        printf("DEBUG: QUEUE[%d]:\n", i);
+        
+        if(output[i].is_number)
+            printf("\tNumber = %ld\n", output[i].number);
+        else
+            printf("\tOperator = %c\n", output[i].operator );
+    }
+}
+
 // Read the whole equation and push all numbers to the numstack.
 int parse_numbers(char *equation)
 {
@@ -197,6 +251,23 @@ int parse_operators(char *equation)
     return EXIT_SUCCESS;
 }
 
+const char *shunting_yard(const char *equation)
+{
+    char *e = strdup(equation), *p = e;
+    bool fparensleft, fparensright = false; // Some flags
+
+    while(*p){ // Loop trough the whole expression. 
+        if(isdigit(*p)){ // If a number is detected
+            push_number_to_output(strtol(p,&p, 10));
+        }
+        if(is_operator(*p)){ // If an operator is detected
+            push_opstack(*p);
+            p++;
+            
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     if(argc < 2)
@@ -204,11 +275,14 @@ int main(int argc, char *argv[])
 
     char *equation = argv[1];
     
-    parse_numbers(equation);
-    parse_operators(equation);
+    //parse_numbers(equation);
+    //parse_operators(equation);
 
-    print_numstack();
-    print_opstack();
+    //print_numstack();
+    //print_opstack();
+
+    shunting_yard(equation);
+    flush_rpn();
 
     //printf("\nSUCCESS: %s = %f\n", equation, parse_equation(equation));
 
