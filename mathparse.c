@@ -87,9 +87,9 @@ void die(const char *message)
 }
 
 // Check if a character is a mathematical operator.
-bool is_operator(char c)
+bool isoperator(char c)
 {
-    return (c=='(') || (c==')') ||  (c=='+') || (c=='-') || (c=='*') || (c=='/') || (c=='^');
+    return (c=='+') || (c=='-') || (c=='*') || (c=='/') || (c=='^');
 }
 
 // Fill an operator struct with the current operator.
@@ -105,6 +105,24 @@ void fill_opstack(char c)
         case '/': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_DIV; opstack[nopstack].assoc=ASSOC_DIV; break;
         case '^': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_POW; opstack[nopstack].assoc=ASSOC_POW; break;
     }
+}
+
+// Get the precedence of an operator
+int get_op_prec(char c)
+{
+    int prec = 0;
+
+    switch(c){
+        case '(': prec = PREC_PAR; break;
+        case ')': prec = PREC_PAR; break;
+        case '+': prec = PREC_ADD; break;
+        case '-': prec = PREC_MIN; break;
+        case '*': prec = PREC_MUL; break;
+        case '/': prec = PREC_DIV; break;
+        case '^': prec = PREC_POW; break;
+    }
+
+    return prec;
 }
 
 // Savely push a number to the numstack.
@@ -148,8 +166,8 @@ void push_opstack(char op)
 // Savely pop an operator from the opstack.
 operator *pop_opstack()
 {
-    if(!nopstack)
-        die("Operator stack empty!");
+    //if(!nopstack)
+    //    die("Operator stack empty!");
 
     return &opstack[--nopstack];
 }
@@ -190,7 +208,7 @@ void push_operator_to_output(char op)
 }
 
 // Flush RPN expression!
-void flush_rpn()
+void print_output()
 {
     //TODO Implement!
     // The following is only for debugging purposes!
@@ -237,7 +255,7 @@ int parse_operators(char *equation)
     char *str = strdup(equation), *p = str;
 
     while(*p){ // While there are more characters to process.
-        if(is_operator(*p)){
+        if(isoperator(*p)){
             printf("DEBUG: Pushing operator %c to opstack.\n", *p);
             push_opstack(*p);
             p++;
@@ -251,21 +269,51 @@ int parse_operators(char *equation)
     return EXIT_SUCCESS;
 }
 
-const char *shunting_yard(const char *equation)
+void shunting_yard(const char *equation)
 {
     char *e = strdup(equation), *p = e;
-    bool fparensleft, fparensright = false; // Some flags
 
-    while(*p){ // Loop trough the whole expression. 
-        if(isdigit(*p)){ // If a number is detected
-            push_number_to_output(strtol(p,&p, 10));
+    printf("\nDEBUG: ---- Begin shunting yard.\n");
+
+    while(*p){              // While there are tokens to read.
+        if(isdigit(*p)){    // If the token is a number.
+            long number = strtol(p,&p,10);
+            push_number_to_output(number); // Push to outqueue.
+            printf("DEBUG: Pushed Number %ld to output.\n", number);
         }
-        if(is_operator(*p)){ // If an operator is detected
+
+        if(isoperator(*p)){ // If the token is an operator.
+            while(opstack[nopstack].prec >= get_op_prec(*p)){
+                printf("DEBUG: Op on opstack has greater prec. -> Push to output.\n");
+                push_operator_to_output(*p);
+            }
+            push_opstack(*p);
+            printf("DEBUG: Pushed %c to opstack.\n", *p);
+            p++;
+        }
+
+        if(*p == '('){ // If the token is a left bracket.
+            printf("DEBUG: Left bracket -> opstack.\n");
             push_opstack(*p);
             p++;
-            
+        }
+
+        if(*p == ')'){ // If the token is a right bracket.
+            printf("DEBUG: Right bracket!\n");
+            while(opstack[nopstack].op != '('){
+                printf("DEBUG: Pop operator %c from opstack to output.\n", opstack[nopstack].op);
+                push_operator_to_output(pop_opstack());
+            }
+            pop_opstack(); // pop left brackets and discard it
+            printf("DEBUG: Discard left bracket.\n");
         }
     }
+    while(nopstack > 0)
+        push_operator_to_output(pop_opstack());
+
+    print_output();
+
+    free(e);
 }
 
 int main(int argc, char *argv[])
@@ -282,9 +330,6 @@ int main(int argc, char *argv[])
     //print_opstack();
 
     shunting_yard(equation);
-    flush_rpn();
-
-    //printf("\nSUCCESS: %s = %f\n", equation, parse_equation(equation));
 
     return EXIT_SUCCESS; 
 }
