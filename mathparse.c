@@ -164,12 +164,12 @@ void push_opstack(char op)
 }
 
 // Savely pop an operator from the opstack.
-operator *pop_opstack()
+operator pop_opstack()
 {
-    //if(!nopstack)
-    //    die("Operator stack empty!");
+    if(!nopstack)
+        die("Operator stack empty!");
 
-    return &opstack[--nopstack];
+    return opstack[--nopstack];
 }
 
 // [DEBUG ONLY] print the local opstack
@@ -269,9 +269,25 @@ int parse_operators(char *equation)
     return EXIT_SUCCESS;
 }
 
+void print_rpnexpr()
+{
+    int i = 0;
+    printf("\nRPN Expression: ");
+    
+    for(i = 0; i <= (noutput - 1); i++){
+        if(output[i].is_number)
+            printf("%ld ", output[i].number);
+        else
+            printf("%c ", output[i].operator);
+    }
+
+    printf("\nDEBUG: ---- Finnished shunting yard.\n");
+}
+
 void shunting_yard(const char *equation)
 {
     char *e = strdup(equation), *p = e;
+    operator op;
 
     printf("\nDEBUG: ---- Begin shunting yard.\n");
 
@@ -285,33 +301,39 @@ void shunting_yard(const char *equation)
         if(isoperator(*p)){ // If the token is an operator.
             while(opstack[nopstack].prec >= get_op_prec(*p)){
                 printf("DEBUG: Op on opstack has greater prec. -> Push to output.\n");
-                push_operator_to_output(*p);
+                op = pop_opstack();
+                push_operator_to_output(op.op);
             }
             push_opstack(*p);
-            printf("DEBUG: Pushed %c to opstack.\n", *p);
+            printf("DEBUG: Pushed Operator %c to opstack.\n", *p);
             p++;
         }
 
         if(*p == '('){ // If the token is a left bracket.
-            printf("DEBUG: Left bracket -> opstack.\n");
+            printf("DEBUG: Pushed Operator '(' opstack.\n");
             push_opstack(*p);
             p++;
         }
 
         if(*p == ')'){ // If the token is a right bracket.
-            printf("DEBUG: Right bracket!\n");
-            while(opstack[nopstack].op != '('){
-                printf("DEBUG: Pop operator %c from opstack to output.\n", opstack[nopstack].op);
-                push_operator_to_output(pop_opstack());
+            printf("DEBUG: Right bracket detected!\n");
+            while(opstack[nopstack-1].op != '('){
+                printf("DEBUG: Pop Operator %c from opstack to output.\n", opstack[nopstack-1].op);
+                op = pop_opstack();
+                push_operator_to_output(op.op);
             }
             pop_opstack(); // pop left brackets and discard it
             printf("DEBUG: Discard left bracket.\n");
+            p++;
         }
     }
-    while(nopstack > 0)
-        push_operator_to_output(pop_opstack());
+    while(nopstack > 0){
+        op = pop_opstack();
+        push_operator_to_output(op.op);
+    }
 
     print_output();
+    print_rpnexpr();
 
     free(e);
 }
