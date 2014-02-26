@@ -12,4 +12,4 @@ build:
 	$(CC) $(CFLAGS) -o $(PRGNAME) $(PRGNAME).c
 
 run:
-	$(RUN) ./$(PRGNAME) '(123/(12/6))'
+	$(RUN) ./$(PRGNAME) '((123-1)/(3*(12/6)))'
