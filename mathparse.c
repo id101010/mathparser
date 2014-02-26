@@ -13,14 +13,14 @@
 #include<errno.h>
 #include<ctype.h>
 #include<stdbool.h>
+#include<math.h>
+#include<string.h>
 
 // ---------------  Defines
 
 // Define maximum values
-#define MAX_EQU_LENGTH  64
-#define MAX_NUMSTACK    64
-#define MAX_OPSTACK     64
-#define MAX_QUEUE       64
+#define MAX_OPSTACK     128
+#define MAX_QUEUE       128
 
 // Define the precedence and associativity of each operator
 #define PREC_POW    4
@@ -59,10 +59,6 @@ typedef struct{
     long number;
     char operator;
 }queue;
-
-// creating a global Numstack by defining an array of numbers.
-long numstack[MAX_NUMSTACK];
-long nnumstack = 0;
 
 // creating an array of operator structs. -> Op Stack
 operator opstack[MAX_OPSTACK];
@@ -123,34 +119,6 @@ int get_op_prec(char c)
     }
 
     return prec;
-}
-
-// Savely push a number to the numstack.
-void push_numstack(long num)
-{
-    if(nnumstack > MAX_NUMSTACK - 1)
-        die ("Number stack overflow!\n");
-
-    numstack[nnumstack++] = num;
-}
-
-// Savely pop a number from the numstack.
-int pop_numstack()
-{
-    if(!nnumstack)
-        die("Number stack empty!\n");
-
-    return numstack[--nnumstack];
-}
-
-// [DEBUG ONLY] print the local numstack
-void print_numstack()
-{
-    printf("\nDEBUG: Printing numstack!\n");
-    int i = 0;
-    for(i = (nnumstack - 1); i >= 0; i--){
-        printf("DEBUG: NUMSTACK[%d] = %ld\n", i, numstack[i]);
-    }
 }
 
 // Savely push an operator to the opstack.
@@ -226,49 +194,6 @@ void print_output()
     }
 }
 
-// Read the whole equation and push all numbers to the numstack.
-int parse_numbers(char *equation)
-{
-    // Copy an in a new instance of a string, because 
-    // strtol consumes each char after conversion.
-    char *str = strdup(equation), *p = str;
-    
-    while(*p){ // While there are more characters to process.
-        if(isdigit(*p)){
-            long number = strtol(p, &p, 10);
-            printf("DEBUG: Pushing number: %ld to numstack.\n", number);
-            push_numstack(number);
-        } else {
-            p++;
-        }
-    }
-
-    free(str);
-
-    return EXIT_SUCCESS;
-}
-
-// Read the whole equation and push all operators to the opstack.
-int parse_operators(char *equation)
-{
-    // Unnecessary in this case but it looks cooler. ;)
-    char *str = strdup(equation), *p = str;
-
-    while(*p){ // While there are more characters to process.
-        if(isoperator(*p)){
-            printf("DEBUG: Pushing operator %c to opstack.\n", *p);
-            push_opstack(*p);
-            p++;
-        } else {
-            p++;
-        }
-    }
-
-    free(str);
-
-    return EXIT_SUCCESS;
-}
-
 void print_rpnexpr()
 {
     int i = 0;
@@ -290,34 +215,35 @@ void shunting_yard(const char *equation)
     operator op;
 
     printf("\nDEBUG: ---- Begin shunting yard.\n");
-
+    
+    // Tokenize and perform a shunting yard algorithm.
     while(*p){              // While there are tokens to read.
         if(isdigit(*p)){    // If the token is a number.
-            long number = strtol(p,&p,10);
-            push_number_to_output(number); // Push to outqueue.
+            long number = strtol(p,&p,10);  // Consume number.  
+            push_number_to_output(number);  // Push to outqueue.
             printf("DEBUG: Pushed Number %ld to output.\n", number);
         }
 
         if(isoperator(*p)){ // If the token is an operator.
             while(opstack[nopstack].prec >= get_op_prec(*p)){
                 printf("DEBUG: Op on opstack has greater prec. -> Push to output.\n");
-                op = pop_opstack();
-                push_operator_to_output(op.op);
+                op = pop_opstack(); // Pop the top operator out of the opstack.
+                push_operator_to_output(op.op); 
             }
-            push_opstack(*p);
+            push_opstack(*p); // Push to opstack
             printf("DEBUG: Pushed Operator %c to opstack.\n", *p);
             p++;
         }
 
         if(*p == '('){ // If the token is a left bracket.
             printf("DEBUG: Pushed Operator '(' opstack.\n");
-            push_opstack(*p);
+            push_opstack(*p); // Push it to the opstack.
             p++;
         }
 
         if(*p == ')'){ // If the token is a right bracket.
             printf("DEBUG: Right bracket detected!\n");
-            while(opstack[nopstack-1].op != '('){
+            while(opstack[nopstack-1].op != '('){   // Pop operators out of the opstack until a left bracket is reached.
                 printf("DEBUG: Pop Operator %c from opstack to output.\n", opstack[nopstack-1].op);
                 op = pop_opstack();
                 push_operator_to_output(op.op);
@@ -327,15 +253,15 @@ void shunting_yard(const char *equation)
             p++;
         }
     }
-    while(nopstack > 0){
-        op = pop_opstack();
+    while(nopstack > 0){    // While there are operators left.
+        op = pop_opstack(); // Pop each out.
         push_operator_to_output(op.op);
     }
 
-    print_output();
-    print_rpnexpr();
+    print_output();     // Print the output.
+    print_rpnexpr();    // print rpn expression.
 
-    free(e);
+    free(e); // Clean the mess.
 }
 
 int main(int argc, char *argv[])
@@ -345,12 +271,6 @@ int main(int argc, char *argv[])
 
     char *equation = argv[1];
     
-    //parse_numbers(equation);
-    //parse_operators(equation);
-
-    //print_numstack();
-    //print_opstack();
-
     shunting_yard(equation);
 
     return EXIT_SUCCESS; 
