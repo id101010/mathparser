@@ -13,7 +13,6 @@
 #include<errno.h>
 #include<ctype.h>
 #include<stdbool.h>
-#include<math.h>
 #include<string.h>
 
 // ---------------  Defines
@@ -21,6 +20,7 @@
 // Define maximum values
 #define MAX_OPSTACK     128
 #define MAX_QUEUE       128
+#define MAX_RPN_STACK   128
 
 // Define the precedence and associativity of each operator
 #define PREC_POW    4
@@ -42,6 +42,7 @@ void die(const char *message);
 void push_numstack(long num);
 int pop_numstack();
 int parse_numbers(char *equation);
+double exp(double x, double y);
 //TODO: Add finnished functions.
 
 // --------------- Global Declarations
@@ -66,7 +67,11 @@ int nopstack = 0;
 
 // creating an array of queue structs. -> Queue
 queue output[MAX_QUEUE];
-int noutput = 0; 
+int noutput = 0;
+
+// creating the rpn stack which is used to calculate the rpn expression after converting.
+double rpnstack[MAX_RPN_STACK];
+int nrpnstack = 0;
 
 // --------------- Functions
 
@@ -80,6 +85,12 @@ void die(const char *message)
     }
 
     exit(EXIT_FAILURE);
+}
+
+// Calculate y to the power of x. 
+double exp(double x, double y)
+{
+    return (y < 0) ? 0 : ((y == 0) ? 1 : x * exp(x, y - 1));
 }
 
 // Check if a character is a mathematical operator.
@@ -121,12 +132,27 @@ int get_op_prec(char c)
     return prec;
 }
 
+// Savely push to the rpn stack.
+void push_rpnstack(double v)
+{
+    if(nrpnstack > MAX_RPN_STACK - 1)
+        die("RPN stack overflow!\n");
+    rpnstack[nrpnstack++] = v;
+}
+
+// Savely pop from the rpn stack.
+double pop_rpnstack()
+{
+    if(!nrpnstack)
+        die("RPN stack is empty!\n");
+    return rpnstack[--nrpnstack];
+}
+
 // Savely push an operator to the opstack.
 void push_opstack(char op)
 {
     if(nopstack > MAX_OPSTACK - 1)
         die("Operator stack overflow!\n");
-
     fill_opstack(op);
     nopstack++;
 }
@@ -136,11 +162,10 @@ operator pop_opstack()
 {
     if(!nopstack)
         die("Operator stack empty!");
-
     return opstack[--nopstack];
 }
 
-// [DEBUG ONLY] print the local opstack
+// [DEBUG ONLY] print the local opstack.
 void print_opstack()
 {
     printf("\nDEBUG: Printing opstack!\n");
@@ -153,34 +178,29 @@ void print_opstack()
     }
 }
 
-// Push a Number to the output queue
+// Push a Number to the output queue.
 void push_number_to_output(long num)
 {
     if(noutput > MAX_QUEUE - 1)
         die("Output stack overflow!\n");
-    
     output[noutput].is_number = true;
     output[noutput].number = num;
     noutput++;
 }
 
-// Push an operator to the output queue
+// Push an operator to the output queue.
 void push_operator_to_output(char op)
 {
     if(noutput > MAX_QUEUE - 1)
         die("Output stack overflow!\n");
-
     output[noutput].is_number = false;
     output[noutput].operator = op;
     noutput++;
 }
 
-// Flush RPN expression!
+// [DEBUG ONLY] print out the output stack.
 void print_output()
 {
-    //TODO Implement!
-    // The following is only for debugging purposes!
-
     printf("\nDEBUG: Printing output queue!\n");
     int i = 0;
     for(i = (noutput - 1); i >= 0; i--){
@@ -194,22 +214,56 @@ void print_output()
     }
 }
 
-void print_rpnexpr()
+// [DEBUG ONLY] print the output stack as single rpn expression.
+void read_rpn_expression()
 {
     int i = 0;
-    printf("\nRPN Expression: ");
+    char s[noutput];
+    char *ptr = s;
+
+    printf("\nDEBUG: RPN Expression: ");
     
     for(i = 0; i <= (noutput - 1); i++){
-        if(output[i].is_number)
+        if(output[i].is_number){
             printf("%ld ", output[i].number);
-        else
+            s[i] = output[i].number;
+        }
+        else{
             printf("%c ", output[i].operator);
+            s[i] = output[i].operator;
+        }
     }
 
-    printf("\nDEBUG: ---- Finnished shunting yard.\n");
+    printf("\n\n");
 }
 
-void shunting_yard(const char *equation)
+// Solve an rpn expression
+double eval_rpn(char *s)
+{
+    printf("DEBUG: ---- Start solving rpn expression!\n");
+
+    double a, b;
+    int i;
+    char *e, *w = " \t\n\r\f";
+
+    for(s = strtok(s,w); s; s = strtok(0,w)){
+        a = strtod(s, &e);
+        if(e > s) printf(" :"), push_rpnstack(a);
+#define binop(x) printf("%c:", *s), b = pop_rpnstack(), a = pop_rpnstack(), push_rpnstack(x)
+        else if (*s == '+') binop(a + b);
+        else if (*s == '-') binop(a - b);
+        else if (*s == '*') binop(a * b);
+        else if (*s == '/') binop(a / b);
+        else if (*s == '^') binop(exp(a, b));
+#undef binop
+        for(i = nrpnstack; i-- || 0 * putchar('\n');)
+            printf(" %g", rpnstack[i]);
+    }
+
+    return pop_rpnstack();
+}
+
+const char *shunting_yard(const char *equation)
 {
     char *e = strdup(equation), *p = e;
     operator op;
@@ -258,10 +312,10 @@ void shunting_yard(const char *equation)
         push_operator_to_output(op.op);
     }
 
-    print_output();     // Print the output.
-    print_rpnexpr();    // print rpn expression.
-
+    read_rpn_expression(); // Print a nice rpn expression.
     free(e); // Clean the mess.
+
+    return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[])
@@ -272,6 +326,9 @@ int main(int argc, char *argv[])
     char *equation = argv[1];
     
     shunting_yard(equation);
+    
+    char s[] = "123 1 - 3 12 6 / * /";
+    printf("%g\n", eval_rpn(s));
 
     return EXIT_SUCCESS; 
 }
