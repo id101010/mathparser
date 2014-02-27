@@ -19,7 +19,7 @@
  *
  * Abstract:
  *
- * An algorithm which is able to parse an equation in the INFIX Form
+ * An program which is able to parse an equation in the INFIX Form
  * and convert it to an easy to solve rpn expression.  
  * 
  * Bsp.: "(100/2)/((16/2/4)" gets converted to "100 2 / 5 2 / 8 /"
@@ -29,7 +29,7 @@
  * - handle negative numbers
  *
  * Contact:
- * aaron@duckpond.ch (feel free to use my public key)
+ * aaron@duckpond.ch (feel free to use my gpg key)
  */
 #include<stdio.h>
 #include<stdlib.h>
