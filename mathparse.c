@@ -206,7 +206,6 @@ void print_opstack()
     int i = 0;
     for(i = (nopstack - 1); i >= 0; i--){
         printf("[DEBUG]: OPSTACK[%d]:\n", i);
-//TODO: Add finnished functions.
         printf("\tOperator = %c\n", opstack[i].op);
         printf("\tPrecedence = %d\n", opstack[i].prec);
         printf("\tAssociativity = %s\n\n", opstack[i].assoc);
@@ -277,25 +276,26 @@ void read_rpn_expression()
     printf("\n\n");
 }
 
-// Solve an rpn expression
-double eval_rpn(char *s)
+double eval_rpn()
 {
 #ifdef DEBUG
-    printf("[DEBUG]: ---- Start solving rpn expression!\n");
+    printf("[DEBUG]: ----- Start solving rpn expression.\n");
 #endif
     double a, b;
-    char *e, *w = " \t\n\r\f";
-
-    for(s = strtok(s,w); s; s = strtok(0,w)){
-        a = strtod(s, &e);
-        if(e > s) push_rpnstack(a);
-#define binop(x) b = pop_rpnstack(), a = pop_rpnstack(), push_rpnstack(x)
-        else if (*s == '+') binop(a + b);
-        else if (*s == '-') binop(a - b);
-        else if (*s == '*') binop(a * b);
-        else if (*s == '/') binop(a / b);
-        else if (*s == '^') binop(exp(a, b));
-#undef binop
+    int i = 0;
+#define RPN_CALC(x) b = pop_rpnstack(), a = pop_rpnstack(), push_rpnstack(x)
+    for(i = 0; i <= (noutput - 1); i++){
+        if(output[i].is_number)
+            push_rpnstack(output[i].number);
+        else{
+            switch(output[i].operator){
+                case '+': RPN_CALC(a + b); break;
+                case '-': RPN_CALC(a - b); break;
+                case '*': RPN_CALC(a * b); break;
+                case '/': RPN_CALC(a / b); break;
+                case '^': RPN_CALC(exp(a, b)); break;
+            }
+        }
     }
 
     return pop_rpnstack();
@@ -306,7 +306,7 @@ const char *shunting_yard(const char *equation)
     char *e = strdup(equation), *p = e;
     operator op;
 #ifdef DEBUG
-    printf("\n[DEBUG]: ---- Begin shunting yard.\n");
+    printf("\n[DEBUG]: ----- Begin shunting yard.\n");
 #endif    
     // Tokenize and perform a shunting yard algorithm.
     while(*p){                      // While there are tokens to read.
@@ -359,7 +359,7 @@ int main(int argc, char *argv[])
     shunting_yard(equation);
     
     char s[] = "123 1 - 3 12 6 / * /";
-    printf("\n[OUTPUT]: %g\n\n", eval_rpn(s));
+    printf("\n[OUTPUT]: %g\n\n", eval_rpn());
 
     return EXIT_SUCCESS; 
 }
