@@ -26,7 +26,7 @@
  * 
  * TODO:
  * - perform Error checks
- * - fix the output of the rpn parser
+ * - handle negative numbers
  *
  * Contact:
  * aaron@duckpond.ch (feel free to use my public key)
@@ -39,33 +39,43 @@
 #include<stdbool.h>
 #include<string.h>
 
-// ---------------  Defines
+// ---------------  Defines & Macros
 
 // Define maximum values
 #define MAX_OPSTACK     128
 #define MAX_QUEUE       128
 #define MAX_RPN_STACK   128
 
-// Define the precedence and associativity of each operator
+// Define the precedence of each operator
 #define PREC_POW    4
 #define PREC_MUL    3
 #define PREC_DIV    3
 #define PREC_ADD    2
 #define PREC_MIN    2
 #define PREC_PAR    0
-#define ASSOC_POW   "right"
-#define ASSOC_MUL   "left"
-#define ASSOC_DIV   "left"
-#define ASSOC_ADD   "left"
-#define ASSOC_MIN   "left"
 #define ASSOC_NONE  0
 
-#define DEBUG // Undefine for no debug output.
+// Debug flag
+#define DEBUG
+
+// Macro which is needed by the eval_rpn function.
+#define RPN_CALC(x) b = pop_rpnstack(), a = pop_rpnstack(), push_rpnstack(x)
 
 // --------------- Prototypes
 
 void die(const char *message);
-double exp(double x, double y);
+void fill_opstack(char c);
+void push_rpnstack(double v);
+void push_opstack(char op);
+void push_number_to_output(long num);
+void push_operator_to_output(char op);
+void read_rpn_expression();
+double eval_rpn();
+double power(double x, double y);
+double pop_rpnstack();
+bool isoperator(char c);
+int get_op_prec(char c);
+const char *shunting_yard(const char *equation);
 
 // --------------- Global Declarations
 
@@ -73,7 +83,6 @@ double exp(double x, double y);
 typedef struct{
     char op;
     int prec;
-    char *assoc;
 }operator;
 
 // the output queue
@@ -110,9 +119,9 @@ void die(const char *message)
 }
 
 // Calculate y to the power of x. 
-double exp(double x, double y)
+double power(double x, double y)
 {
-    return (y < 0) ? 0 : ((y == 0) ? 1 : x * exp(x, y - 1));
+    return (y < 0) ? 0 : ((y == 0) ? 1 : x * power(x, y - 1));
 }
 
 // Check if a character is a mathematical operator.
@@ -126,13 +135,13 @@ void fill_opstack(char c)
 {
     switch(c)
     {
-        case '(': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_PAR; opstack[nopstack].assoc=ASSOC_NONE; break;
-        case ')': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_PAR; opstack[nopstack].assoc=ASSOC_NONE; break;
-        case '+': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_ADD; opstack[nopstack].assoc=ASSOC_ADD; break;
-        case '-': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_MIN; opstack[nopstack].assoc=ASSOC_MIN; break;
-        case '*': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_MUL; opstack[nopstack].assoc=ASSOC_MUL; break;
-        case '/': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_DIV; opstack[nopstack].assoc=ASSOC_DIV; break;
-        case '^': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_POW; opstack[nopstack].assoc=ASSOC_POW; break;
+        case '(': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_PAR; break;
+        case ')': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_PAR; break;
+        case '+': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_ADD; break;
+        case '-': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_MIN; break;
+        case '*': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_MUL; break;
+        case '/': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_DIV; break;
+        case '^': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_POW; break;
     }
 }
 
@@ -199,19 +208,6 @@ operator pop_opstack()
     return opstack[--nopstack];
 }
 
-// [DEBUG ONLY] print the local opstack.
-void print_opstack()
-{
-    printf("\n[DEBUG]: Printing opstack!\n");
-    int i = 0;
-    for(i = (nopstack - 1); i >= 0; i--){
-        printf("[DEBUG]: OPSTACK[%d]:\n", i);
-        printf("\tOperator = %c\n", opstack[i].op);
-        printf("\tPrecedence = %d\n", opstack[i].prec);
-        printf("\tAssociativity = %s\n\n", opstack[i].assoc);
-    }
-}
-
 // Push a Number to the output queue.
 void push_number_to_output(long num)
 {
@@ -238,69 +234,52 @@ void push_operator_to_output(char op)
     noutput++;
 }
 
-// [DEBUG ONLY] print out the output stack.
-void print_output()
-{
-    printf("\n[DEBUG]: Printing output queue!\n");
-    int i = 0;
-    for(i = (noutput - 1); i >= 0; i--){
-        
-        printf("[DEBUG]: QUEUE[%d]:\n", i);
-        
-        if(output[i].is_number)
-            printf("\tNumber = %ld\n", output[i].number);
-        else
-            printf("\tOperator = %c\n", output[i].operator );
-    }
-}
-
+#ifdef DEBUG
 // [DEBUG ONLY] print the output stack as single rpn expression.
 void read_rpn_expression()
 {
     int i = 0;
-    char s[noutput];
 
     printf("\n[DEBUG]: RPN Expression: ");
     
     for(i = 0; i <= (noutput - 1); i++){
-        if(output[i].is_number){
+        if(output[i].is_number)
             printf("%ld ", output[i].number);
-            s[i] = output[i].number;
-        }
-        else{
+        else
             printf("%c ", output[i].operator);
-            s[i] = output[i].operator;
-        }
     }
 
     printf("\n\n");
 }
+#endif
 
+// Evaluate the rpn expression, stored in the output queue.
 double eval_rpn()
 {
 #ifdef DEBUG
     printf("[DEBUG]: ----- Start solving rpn expression.\n");
 #endif
-    double a, b;
+    double a, b; 
     int i = 0;
-#define RPN_CALC(x) b = pop_rpnstack(), a = pop_rpnstack(), push_rpnstack(x)
-    for(i = 0; i <= (noutput - 1); i++){
-        if(output[i].is_number)
-            push_rpnstack(output[i].number);
+
+    for(i = 0; i <= (noutput - 1); i++){            // Loop through the stack.
+        if(output[i].is_number)                     // If number
+            push_rpnstack(output[i].number);        // Push to rpn stack.
         else{
-            switch(output[i].operator){
+            switch(output[i].operator){             // If operator, evaluate.
                 case '+': RPN_CALC(a + b); break;
                 case '-': RPN_CALC(a - b); break;
                 case '*': RPN_CALC(a * b); break;
                 case '/': RPN_CALC(a / b); break;
-                case '^': RPN_CALC(exp(a, b)); break;
+                case '^': RPN_CALC(power(a, b)); break;
             }
         }
     }
 
-    return pop_rpnstack();
+    return pop_rpnstack(); // After the evaluation, return the last element on the stack.
 }
 
+// Perform the shunting yard algorithm on a given equation.
 const char *shunting_yard(const char *equation)
 {
     char *e = strdup(equation), *p = e;
@@ -342,9 +321,10 @@ const char *shunting_yard(const char *equation)
         op = pop_opstack();         // Pop each out.
         push_operator_to_output(op.op);
     }
-
-    read_rpn_expression(); // Print a nice rpn expression.
-    free(e); // Clean the mess.
+#ifdef DEBUG
+    read_rpn_expression();          // Print the converted rpn expression.
+#endif
+    free(e);                        // Clean the mess.
 
     return EXIT_SUCCESS;
 }
@@ -353,12 +333,9 @@ int main(int argc, char *argv[])
 {
     if(argc < 2)
         die("To few arguments! Give equation!");
-
-    char *equation = argv[1];
     
-    shunting_yard(equation);
+    shunting_yard(argv[1]);
     
-    char s[] = "123 1 - 3 12 6 / * /";
     printf("\n[OUTPUT]: %g\n\n", eval_rpn());
 
     return EXIT_SUCCESS; 
