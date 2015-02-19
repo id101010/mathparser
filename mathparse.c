@@ -257,7 +257,7 @@ void read_rpn_expression()
 double eval_rpn()
 {
 #ifdef DEBUG
-    printf("[DEBUG]: ----- Start solving rpn expression.\n");
+    printf("[DEBUG]: ------ Start solving rpn expression.\n");
 #endif
     double a, b; 
     int i = 0;
@@ -285,7 +285,7 @@ const char *shunting_yard(const char *equation)
     char *e = strdup(equation), *p = e;
     operator op;
 #ifdef DEBUG
-    printf("\n[DEBUG]: ----- Begin shunting yard.\n");
+    printf("\n[DEBUG]: ------ Begin shunting yard.\n");
 #endif    
     // Tokenize and perform a shunting yard algorithm.
     while(*p){                      // While there are tokens to read.
