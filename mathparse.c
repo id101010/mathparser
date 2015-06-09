@@ -20,10 +20,10 @@
  * Abstract:
  *
  * An program which is able to parse an equation in the INFIX Form
- * and convert it to an easy to solve rpn expression.  
- * 
+ * and convert it to an easy to solve rpn expression.
+ *
  * Bsp.: "(100/2)/((16/2/4)" gets converted to "100 2 / 5 2 / 8 /"
- * 
+ *
  * TODO:
  * - perform Error checks
  * - handle negative numbers
@@ -80,17 +80,17 @@ const char *shunting_yard(const char *equation);
 // --------------- Global Declarations
 
 // the global opstack
-typedef struct{
+typedef struct {
     char op;
     int prec;
-}operator;
+} operator;
 
 // the output queue
-typedef struct{
+typedef struct {
     bool is_number;
     long number;
     char operator;
-}queue;
+} queue;
 
 // creating an array of operator structs. -> Op Stack
 operator opstack[MAX_OPSTACK];
@@ -109,16 +109,16 @@ int nrpnstack = 0;
 // Die with error message.
 void die(const char *message)
 {
-    if(errno){
+    if(errno) {
         perror(message);
-    }else{
+    } else {
         printf("[ERROR]: %s\n", message);
     }
 
     exit(EXIT_FAILURE);
 }
 
-// Calculate y to the power of x. 
+// Calculate y to the power of x.
 double power(double x, double y)
 {
     return (y < 0) ? 0 : ((y == 0) ? 1 : x * power(x, y - 1));
@@ -133,15 +133,35 @@ bool isoperator(char c)
 // Fill an operator struct with the current operator.
 void fill_opstack(char c)
 {
-    switch(c)
-    {
-        case '(': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_PAR; break;
-        case ')': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_PAR; break;
-        case '+': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_ADD; break;
-        case '-': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_MIN; break;
-        case '*': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_MUL; break;
-        case '/': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_DIV; break;
-        case '^': opstack[nopstack].op=c; opstack[nopstack].prec=PREC_POW; break;
+    switch(c) {
+    case '(':
+        opstack[nopstack].op=c;
+        opstack[nopstack].prec=PREC_PAR;
+        break;
+    case ')':
+        opstack[nopstack].op=c;
+        opstack[nopstack].prec=PREC_PAR;
+        break;
+    case '+':
+        opstack[nopstack].op=c;
+        opstack[nopstack].prec=PREC_ADD;
+        break;
+    case '-':
+        opstack[nopstack].op=c;
+        opstack[nopstack].prec=PREC_MIN;
+        break;
+    case '*':
+        opstack[nopstack].op=c;
+        opstack[nopstack].prec=PREC_MUL;
+        break;
+    case '/':
+        opstack[nopstack].op=c;
+        opstack[nopstack].prec=PREC_DIV;
+        break;
+    case '^':
+        opstack[nopstack].op=c;
+        opstack[nopstack].prec=PREC_POW;
+        break;
     }
 }
 
@@ -150,14 +170,28 @@ int get_op_prec(char c)
 {
     int prec = 0;
 
-    switch(c){
-        case '(': prec = PREC_PAR; break;
-        case ')': prec = PREC_PAR; break;
-        case '+': prec = PREC_ADD; break;
-        case '-': prec = PREC_MIN; break;
-        case '*': prec = PREC_MUL; break;
-        case '/': prec = PREC_DIV; break;
-        case '^': prec = PREC_POW; break;
+    switch(c) {
+    case '(':
+        prec = PREC_PAR;
+        break;
+    case ')':
+        prec = PREC_PAR;
+        break;
+    case '+':
+        prec = PREC_ADD;
+        break;
+    case '-':
+        prec = PREC_MIN;
+        break;
+    case '*':
+        prec = PREC_MUL;
+        break;
+    case '/':
+        prec = PREC_DIV;
+        break;
+    case '^':
+        prec = PREC_POW;
+        break;
     }
 
     return prec;
@@ -166,30 +200,33 @@ int get_op_prec(char c)
 // Savely push to the rpn stack.
 void push_rpnstack(double v)
 {
-    if(nrpnstack > MAX_RPN_STACK - 1)
+    if(nrpnstack > MAX_RPN_STACK - 1) {
         die("RPN stack overflow!\n");
+    }
 #ifdef DEBUG
     printf("[DEBUG]: [PUSH]\tnumber\t%g\tto rpn stack.\n", v);
-#endif 
+#endif
     rpnstack[nrpnstack++] = v;
 }
 
 // Savely pop from the rpn stack.
 double pop_rpnstack()
 {
-    if(!nrpnstack)
+    if(!nrpnstack) {
         die("RPN stack is underflow!\n");
+    }
 #ifdef DEBUG
     printf("[DEBUG]: [POP]\tnumber\t%g\tfrom rpn stack.\n", rpnstack[nrpnstack-1]);
-#endif    
+#endif
     return rpnstack[--nrpnstack];
 }
 
 // Savely push an operator to the opstack.
 void push_opstack(char op)
 {
-    if(nopstack > MAX_OPSTACK - 1)
+    if(nopstack > MAX_OPSTACK - 1) {
         die("Operator stack overflow!\n");
+    }
 #ifdef DEBUG
     printf("[DEBUG]: [PUSH]\toperator\t%c\tto opstack.\n", op);
 #endif
@@ -200,8 +237,9 @@ void push_opstack(char op)
 // Savely pop an operator from the opstack.
 operator pop_opstack()
 {
-    if(!nopstack)
+    if(!nopstack) {
         die("Operator stack underflow!");
+    }
 #ifdef DEBUG
     printf("[DEBUG]: [POP]\toperator\t%c\tfrom opstack.\n", opstack[nopstack].op);
 #endif
@@ -211,8 +249,9 @@ operator pop_opstack()
 // Push a Number to the output queue.
 void push_number_to_output(long num)
 {
-    if(noutput > MAX_QUEUE - 1)
+    if(noutput > MAX_QUEUE - 1) {
         die("Output stack overflow!\n");
+    }
 #ifdef DEBUG
     printf("[DEBUG]: [PUSH]\tnumber\t\t%ld\tto queue.\n", num);
 #endif
@@ -224,8 +263,9 @@ void push_number_to_output(long num)
 // Push an operator to the output queue.
 void push_operator_to_output(char op)
 {
-    if(noutput > MAX_QUEUE - 1)
+    if(noutput > MAX_QUEUE - 1) {
         die("Output stack overflow!\n");
+    }
 #ifdef DEBUG
     printf("[DEBUG]: [PUSH]\toperator\t%c\tto queue.\n", op);
 #endif
@@ -241,12 +281,13 @@ void read_rpn_expression()
     int i = 0;
 
     printf("\n[DEBUG]: RPN Expression: ");
-    
-    for(i = 0; i <= (noutput - 1); i++){
-        if(output[i].is_number)
+
+    for(i = 0; i <= (noutput - 1); i++) {
+        if(output[i].is_number) {
             printf("%ld ", output[i].number);
-        else
+        } else {
             printf("%c ", output[i].operator);
+        }
     }
 
     printf("\n\n");
@@ -259,19 +300,29 @@ double eval_rpn()
 #ifdef DEBUG
     printf("[DEBUG]: ------ Start solving rpn expression.\n");
 #endif
-    double a, b; 
+    double a, b;
     int i = 0;
 
-    for(i = 0; i <= (noutput - 1); i++){            // Loop through the stack.
-        if(output[i].is_number)                     // If number
-            push_rpnstack(output[i].number);        // Push to rpn stack.
-        else{
-            switch(output[i].operator){             // If operator, evaluate.
-                case '+': RPN_CALC(a + b); break;
-                case '-': RPN_CALC(a - b); break;
-                case '*': RPN_CALC(a * b); break;
-                case '/': RPN_CALC(a / b); break;
-                case '^': RPN_CALC(power(a, b)); break;
+    for(i = 0; i <= (noutput - 1); i++) {           // Loop through the stack.
+        if(output[i].is_number) {                   // If number
+            push_rpnstack(output[i].number);    // Push to rpn stack.
+        } else {
+            switch(output[i].operator) {            // If operator, evaluate.
+            case '+':
+                RPN_CALC(a + b);
+                break;
+            case '-':
+                RPN_CALC(a - b);
+                break;
+            case '*':
+                RPN_CALC(a * b);
+                break;
+            case '/':
+                RPN_CALC(a / b);
+                break;
+            case '^':
+                RPN_CALC(power(a, b));
+                break;
             }
         }
     }
@@ -286,30 +337,30 @@ const char *shunting_yard(const char *equation)
     operator op;
 #ifdef DEBUG
     printf("\n[DEBUG]: ------ Begin shunting yard.\n");
-#endif    
+#endif
     // Tokenize and perform a shunting yard algorithm.
-    while(*p){                      // While there are tokens to read.
-        if(isdigit(*p)){            // If the token is a number.
-            long number = strtol(p,&p,10);  // Consume number.  
+    while(*p) {                     // While there are tokens to read.
+        if(isdigit(*p)) {           // If the token is a number.
+            long number = strtol(p,&p,10);  // Consume number.
             push_number_to_output(number);  // Push to outqueue.
         }
 
-        if(isoperator(*p)){         // If the token is an operator.
-            while(opstack[nopstack-1].prec >= get_op_prec(*p)){ // While there is an operator on top of the stack with a greater or equal prec...
+        if(isoperator(*p)) {        // If the token is an operator.
+            while(opstack[nopstack-1].prec >= get_op_prec(*p)) { // While there is an operator on top of the stack with a greater or equal prec...
                 op = pop_opstack(); // ..Pop the top operator out of the opstack.
-                push_operator_to_output(op.op); 
+                push_operator_to_output(op.op);
             }
             push_opstack(*p);       // Push to opstack
             p++;
         }
 
-        if(*p == '('){              // If the token is a left bracket.
+        if(*p == '(') {             // If the token is a left bracket.
             push_opstack(*p);       // Push it to the opstack.
             p++;
         }
 
-        if(*p == ')'){              // If the token is a right bracket.
-            while(opstack[nopstack-1].op != '('){   // Pop operators out of the opstack until a left bracket is reached.
+        if(*p == ')') {             // If the token is a right bracket.
+            while(opstack[nopstack-1].op != '(') {  // Pop operators out of the opstack until a left bracket is reached.
                 op = pop_opstack();
                 push_operator_to_output(op.op);
             }
@@ -317,7 +368,7 @@ const char *shunting_yard(const char *equation)
             p++;
         }
     }
-    while(nopstack > 0){            // While there are operators left.
+    while(nopstack > 0) {           // While there are operators left.
         op = pop_opstack();         // Pop each out.
         push_operator_to_output(op.op);
     }
@@ -331,12 +382,13 @@ const char *shunting_yard(const char *equation)
 
 int main(int argc, char *argv[])
 {
-    if(argc < 2)
+    if(argc < 2) {
         die("To few arguments! Give equation!");
-    
+    }
+
     shunting_yard(argv[1]);
-    
+
     printf("\n[OUTPUT]: %g\n\n", eval_rpn());
 
-    return EXIT_SUCCESS; 
+    return EXIT_SUCCESS;
 }
